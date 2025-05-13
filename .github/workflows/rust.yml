@@ -16,8 +16,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Nightly
-      run: rust default nightly
     - name: Build
       run: cargo build --verbose --release --features acpi_ec
     - name: Upload build
