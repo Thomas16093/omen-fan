@@ -13,7 +13,7 @@ use std::path::Path;
 const EC_IO_FILE: &str = "/dev/ec";
 
 // user have access to ec_sys
-#[cfg(feature = "default_ec")]
+#[cfg(not(feature = "acpi_ec"))]
 const EC_IO_FILE: &str = "/sys/kernel/debug/ec/ec0/io";
 
 const PERFORMANCE_OFFSET: u64 = 0x95;
