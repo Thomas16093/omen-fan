@@ -16,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: whatisindirectory
+      run: ls -ail
     - name: Build
       run: cargo build --verbose --release --features acpi_ec
     - name: Upload build
