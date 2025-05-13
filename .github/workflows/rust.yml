@@ -13,11 +13,14 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: omen-fan/omen-fan
 
     steps:
     - uses: actions/checkout@v4
-    - name: Move into the right directory
-      run: cd omen-fan/
+    - name: List files
+      run: ls -ail
     - name: Build
       run: cargo build --verbose --release --features acpi_ec
     - name: Upload build
