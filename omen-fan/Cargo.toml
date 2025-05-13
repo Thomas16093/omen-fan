@@ -15,3 +15,7 @@ codegen-units = 1
 strip = true
 panic = "abort"
 
+[features]
+default = ["default_ec"]
+acpi_ec = []
+default_ec = []

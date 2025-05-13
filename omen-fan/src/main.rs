@@ -7,7 +7,15 @@ use std::process::Command;
 use std::{fs, vec};
 use std::path::Path;
 
+// Let user compile based on access to ec_sys
+// user does not have access -> use the acpi_ec project
+#[cfg(feature = "acpi_ec")]
+const EC_IO_FILE: &str = "/dev/ec";
+
+// user have access to ec_sys
+#[cfg(feature = "default_ec")]
 const EC_IO_FILE: &str = "/sys/kernel/debug/ec/ec0/io";
+
 const PERFORMANCE_OFFSET: u64 = 0x95;
 const FAN1_OFFSET: u64 = 0x34; // Fan 1 Speed Set (units of 100RPM)
 const FAN2_OFFSET: u64 = 0x35; // Fan 2 Speed Set (units of 100RPM)
@@ -35,16 +43,23 @@ POLL_INTERVAL = 1
 }
 
 fn load_ec_sys_module() {
-    // Check if the `ec_sys` module is loaded
-    let output = Command::new("lsmod")
-        .output()
-        .expect("Failed to execute `lsmod` command.");
-    if !String::from_utf8_lossy(&output.stdout).contains("ec_sys") {
-        // Load the `ec_sys` module with write support
-        Command::new("modprobe")
-            .args(&["ec_sys", "write_support=1"])
-            .status()
-            .expect("Failed to load `ec_sys` module.");
+    // check which ec module is used
+    if EC_IO_FILE == "/dev/ec" {
+        // do nothing, the module is always allowed in write
+        return
+    }
+    else {
+        // Check if the `ec_sys` module is loaded
+        let output = Command::new("lsmod")
+            .output()
+            .expect("Failed to execute `lsmod` command.");
+        if !String::from_utf8_lossy(&output.stdout).contains("ec_sys") {
+            // Load the `ec_sys` module with write support
+            Command::new("modprobe")
+                .args(&["ec_sys", "write_support=1"])
+                .status()
+                .expect("Failed to load `ec_sys` module.");
+        }
     }
 }
 
