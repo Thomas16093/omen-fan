@@ -1,0 +1,27 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Nightly
+      run: rust default nightly
+    - name: Build
+      run: cargo build --verbose --release --features acpi_ec
+    - name: Upload build
+      uses: actions/upload-artifact@v4.6.2
+      with:
+        name: omen-fan
+        path: target/release/
