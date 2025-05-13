@@ -15,7 +15,7 @@
 - EC Probe documentation can be found at [docs/probes.md](https://github.com/alou-S/omen-fan/blob/main/docs/probes.md)
 
 # Building
-- Building with the acpi_ec project :
+- Building with the [acpi_ec](https://github.com/saidsay-so/acpi_ec) project :
     - cargo build --release --features acpi_ec
 
 # Silverblue
