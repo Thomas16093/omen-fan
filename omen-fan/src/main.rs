@@ -16,6 +16,26 @@ const EC_IO_FILE: &str = "/dev/ec";
 #[cfg(not(feature = "acpi_ec"))]
 const EC_IO_FILE: &str = "/sys/kernel/debug/ec/ec0/io";
 
+// use a custom fan curve
+#[cfg(feature = "fan_custom")]
+const USE_FAN_CURVE: bool = true;
+
+#[cfg(not(feature = "fan_custom"))]
+const USE_FAN_CURVE: bool = false;
+
+// use a specific bios mode
+#[cfg(feature = "performance_mode")]
+const USE_PERFORMANCE_MODE: bool = true;
+
+#[cfg(not(feature = "performance_mode"))]
+const USE_PERFORMANCE_MODE: bool = false;
+
+#[cfg(feature = "cool_mode")]
+const USE_COOL_MODE: bool = true;
+
+#[cfg(not(feature = "cool_mode"))]
+const USE_COOL_MODE: bool = false;
+
 const PERFORMANCE_OFFSET: u64 = 0x95;
 const FAN1_OFFSET: u64 = 0x34; // Fan 1 Speed Set (units of 100RPM)
 const FAN2_OFFSET: u64 = 0x35; // Fan 2 Speed Set (units of 100RPM)
@@ -24,6 +44,10 @@ const GPU_TEMP_OFFSET: u64 = 0xB7; // GPU Temp (°C)
 const BIOS_CONTROL_OFFSET: u64 = 0x62; // BIOS Control
 const FAN1_MAX: u8 = 55; // Max speed for Fan 1
 const FAN2_MAX: u8 = 57; // Max speed for Fan 2
+const BIOS_LEGACY_DEFAULT_MODE: u8 = 0; // Bios default mode on init
+const BIOS_DEFAULT_MODE: u8 = 48; // Bios default mode
+const BIOS_PERFORMANCE_MODE: u8 = 49; // Bios performance mode
+const BIOS_COOL_MODE: u8 = 80; // Bios cool mode
 
 fn load_ec_sys_module() {
     // check which ec module is used
@@ -82,6 +106,10 @@ fn disable_bios_control() {
     write_ec_register(BIOS_CONTROL_OFFSET, 0x06); // Disable BIOS control
 }
 
+fn apply_bios_mode(mode: u8) {
+    write_ec_register(PERFORMANCE_OFFSET, mode);
+}
+
 fn mode() -> String{
     let perf_offset: u8 =  read_ec_register(PERFORMANCE_OFFSET);
     match perf_offset {
@@ -91,10 +119,31 @@ fn mode() -> String{
         0x31 => {
             "Performance Mode".to_string()
         }
+        0x40 => {
+            "Cool Mode".to_string()
+        }
         _ => {
             "Undefined Mode".to_string()
         }
     }
+}
+
+fn get_current_mode() -> (String, u8){
+    let mode;
+    let value;
+    if USE_COOL_MODE {
+        mode = "Cool Mode".to_string();
+        value = BIOS_COOL_MODE;
+    }
+    else if USE_PERFORMANCE_MODE {
+        mode = "Performance Mode".to_string();
+        value = BIOS_PERFORMANCE_MODE;
+    }
+    else {
+        mode = "Default Mode".to_string();
+        value = BIOS_DEFAULT_MODE;
+    }
+    (mode, value)
 }
 
 fn temp_to_performance(temp: u8) -> u8{
@@ -130,31 +179,41 @@ fn main() {
     let mut previous_speed = (0, 0);
 
     loop {
-        disable_bios_control();
-        let temp = get_max_temp();
-        println!("Current temperature: {}°C", temp);
-        temp_to_performance(temp);
-        let mode = mode();
-        println!("The mode is: {mode}");
+        
+        let current_mode = mode();
+        println!("The mode is: {current_mode}");
 
-        let speed = match temp {
-            0..=45 => idle_speed,
-            46..=50 => 20,
-            51..=55 => 37,
-            56..=70 => 45,
-            71..=75 => 50,
-            76..=80 => 70,
-            81..=85 => 80,
-            86..93 => 90,
-            _ => 100,
-        };
+        if USE_FAN_CURVE {
+            disable_bios_control();
+            let temp = get_max_temp();
+            println!("Current temperature: {}°C", temp);
+            temp_to_performance(temp);
+            let speed = match temp {
+                0..=45 => idle_speed,
+                46..=50 => 20,
+                51..=55 => 37,
+                56..=70 => 45,
+                71..=75 => 50,
+                76..=80 => 70,
+                81..=85 => 80,
+                86..93 => 90,
+                _ => 100,
+            };
 
-        let fan1_speed = ((FAN1_MAX as u16 * speed as u16) / 100) as u8;
-        let fan2_speed = ((FAN2_MAX as u16 * speed as u16) / 100) as u8;
+            let fan1_speed = ((FAN1_MAX as u16 * speed as u16) / 100) as u8;
+            let fan2_speed = ((FAN2_MAX as u16 * speed as u16) / 100) as u8;
 
-        if previous_speed != (fan1_speed, fan2_speed) {
-            set_fan_speed(fan1_speed, fan2_speed);
-            previous_speed = (fan1_speed, fan2_speed);
+            if previous_speed != (fan1_speed, fan2_speed) {
+                set_fan_speed(fan1_speed, fan2_speed);
+                previous_speed = (fan1_speed, fan2_speed);
+            }
+        }
+        else {
+            let (bios_mode, value) = get_current_mode();
+            if bios_mode != current_mode {
+                apply_bios_mode(value);
+            }
+            println!("The new mode is: {bios_mode}");
         }
 
         sleep(poll_interval);

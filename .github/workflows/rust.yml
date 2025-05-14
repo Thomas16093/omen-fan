@@ -19,10 +19,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Build
+      run: cargo build --verbose --release --features acpi_ec default_mode
     - name: List files
       run: ls -ail
-    - name: Build
-      run: cargo build --verbose --release --features acpi_ec
     - name: Upload build
       uses: actions/upload-artifact@v4.6.2
       with:

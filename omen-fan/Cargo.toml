@@ -16,6 +16,10 @@ strip = true
 panic = "abort"
 
 [features]
-default = ["default_ec"]
+default = ["default_ec", "default_mode"]
 acpi_ec = []
 default_ec = []
+performance_mode = []
+cool_mode = []
+default_mode = []
+fan_custom = []
