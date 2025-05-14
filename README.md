@@ -18,6 +18,19 @@
 - Building with the [acpi_ec](https://github.com/saidsay-so/acpi_ec) project :
     - cargo build --release --features acpi_ec
 
+- Building with a different fan mode :
+    - Available modes :
+        - default_mode : Default mode (Windows Omen Gaming Hub value)
+        - performance_mode : Perfomance mode
+        - cool_mode : Cool mode
+        - fan_custom : Custom fan curve (Internal fan curve created by [Biswas005](https://github.com/Biswas005))
+    - Example :
+        - cargo build --release --features cool_mode
+
+- Modifying both feature at the same time require a different writing : 
+    - For features acpi_ec + cool_mode : 
+        - cargo build --release --features "acpi_ec,cool_mode"
+
 # Silverblue
 -copy the target from release folder
 -sudo cp /var/home/user-name/omen-fan/omen-fan/target/release/omen-fan /usr/local/bin/

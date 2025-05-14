@@ -4,8 +4,6 @@ use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
 use std::process::Command;
-use std::fs;
-use std::path::Path;
 
 // Let user compile based on access to ec_sys
 // user does not have access -> use the acpi_ec project
