@@ -22,7 +22,7 @@ jobs:
     - name: Build
       run: cargo build --verbose --release --features "acpi_ec,default_mode"
     - name: List files
-      run: ls -ail
+      run: ls -ail target/
     - name: Upload build
       uses: actions/upload-artifact@v4.6.2
       with:
