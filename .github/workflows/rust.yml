@@ -20,7 +20,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose --release --features acpi_ec default_mode
+      run: cargo build --verbose --release --features "acpi_ec,default_mode"
     - name: List files
       run: ls -ail
     - name: Upload build
