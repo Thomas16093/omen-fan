@@ -112,13 +112,16 @@ fn mode() -> String{
     let perf_offset: u8 =  read_ec_register(PERFORMANCE_OFFSET);
     match perf_offset {
         0x30 => {
-            "Normal Mode".to_string()
+            "Default Mode".to_string()
         }
         0x31 => {
             "Performance Mode".to_string()
         }
         0x40 => {
             "Cool Mode".to_string()
+        }
+        0x00 => {
+            "Legacy Default Mode".to_string()
         }
         _ => {
             "Undefined Mode".to_string()
