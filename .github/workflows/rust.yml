@@ -27,4 +27,4 @@ jobs:
       uses: actions/upload-artifact@v4.6.2
       with:
         name: omen-fan
-        path: target/release/
+        path: target/release/omen-fan
