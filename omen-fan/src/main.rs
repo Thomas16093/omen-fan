@@ -117,7 +117,7 @@ fn mode() -> String{
         0x31 => {
             "Performance Mode".to_string()
         }
-        0x40 => {
+        0x50 => {
             "Cool Mode".to_string()
         }
         0x00 => {
