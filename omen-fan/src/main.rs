@@ -225,7 +225,7 @@ fn main() {
                 println!("CPU is thermal throttling ! taking over the fan");
             }
             disable_bios_control();
-            set_fan_speed(FAN1_MAX*0.9, FAN2_MAX*0.9);
+            set_fan_speed(FAN1_MAX*0.9 as u8, FAN2_MAX*0.9 as u8);
             already_throttling = true;
         }
         else {
