@@ -178,11 +178,14 @@ fn main() {
     let poll_interval = Duration::from_secs(1);
 
     let mut previous_speed = (0, 0);
+    let mut previous_mode = "Legacy Default Mode".to_string();
 
     loop {
         
         let current_mode = mode();
+        if previous_mode != current_mode{
         println!("The mode is: {current_mode}");
+        }
 
         if USE_FAN_CURVE {
             disable_bios_control();
@@ -213,9 +216,11 @@ fn main() {
             let (bios_mode, value) = get_current_mode();
             if bios_mode != current_mode {
                 apply_bios_mode(value);
+                println!("Setting to : {bios_mode}");
             }
-            println!("The new mode is: {bios_mode}");
         }
+
+        previous_mode = current_mode;
 
         sleep(poll_interval);
     }
