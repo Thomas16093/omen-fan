@@ -104,6 +104,10 @@ fn disable_bios_control() {
     write_ec_register(BIOS_CONTROL_OFFSET, 0x06); // Disable BIOS control
 }
 
+fn enable_bios_control() {
+    write_ec_register(BIOS_CONTROL_OFFSET, 0x00); // Enable BIOS control
+}
+
 fn apply_bios_mode(mode: u8) {
     write_ec_register(PERFORMANCE_OFFSET, mode);
 }
@@ -160,11 +164,6 @@ fn temp_to_performance(temp: u8) -> u8{
     }
 }
 
-
-// fn enable_bios_control() {
-//    write_ec_register(BIOS_CONTROL_OFFSET, 0x00); // Enable BIOS control
-// }
-
 fn main() {
     if !nix::unistd::Uid::effective().is_root() {
         eprintln!("Root access is required to run this program.");
@@ -178,13 +177,14 @@ fn main() {
     let poll_interval = Duration::from_secs(1);
 
     let mut previous_speed = (0, 0);
+    let mut already_throttling = false;
     let mut previous_mode = "Legacy Default Mode".to_string();
 
     loop {
         
         let current_mode = mode();
         if previous_mode != current_mode{
-        println!("The mode is: {current_mode}");
+            println!("The mode is: {current_mode}");
         }
 
         if USE_FAN_CURVE {
@@ -218,6 +218,19 @@ fn main() {
                 apply_bios_mode(value);
                 println!("Setting to : {bios_mode}");
             }
+        }
+
+        if get_max_temp() > 95 {
+            if already_throttling == false {
+                println!("CPU is thermal throttling ! taking over the fan");
+            }
+            disable_bios_control();
+            set_fan_speed(FAN1_MAX*0.9, FAN2_MAX*0.9);
+            already_throttling = true;
+        }
+        else {
+            enable_bios_control();
+            already_throttling = false;
         }
 
         previous_mode = current_mode;
