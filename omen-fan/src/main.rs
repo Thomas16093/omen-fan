@@ -1,3 +1,6 @@
+use iced::{Alignment, Application, Element, Settings};
+use iced::widget::{column, container, pick_list, text, button};
+use std::array::try_from_fn;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::process::exit;
@@ -68,100 +71,254 @@ fn load_ec_sys_module() {
     }
 }
 
-fn read_ec_register(offset: u64) -> u8 {
-    let mut file = File::open(EC_IO_FILE).expect("Failed to open EC IO file. Ensure you have the necessary permissions.");
-    file.seek(SeekFrom::Start(offset))
-        .expect("Failed to seek to EC register.");
-    let mut buffer = [0u8; 1];
-    file.read_exact(&mut buffer)
-        .expect("Failed to read EC register.");
-    buffer[0]
+struct OmenFanGui {
+    options: Vec<String>,
+    selected_option: Option<String>,
+    chosen_mode: String,
 }
 
-fn write_ec_register(offset: u64, value: u8) {
-    let mut file = OpenOptions::new()
-        .write(true)
-        .open(EC_IO_FILE)
-        .expect("Failed to open EC IO file. Ensure you have the necessary permissions.");
-    file.seek(SeekFrom::Start(offset))
-        .expect("Failed to seek to EC register.");
-    file.write_all(&[value])
-        .expect("Failed to write to EC register.");
+enum Message {
+    ChosenOption(String),
+    Run,
 }
 
-fn get_max_temp() -> u8 {
-    let cpu_temp = read_ec_register(CPU_TEMP_OFFSET);
-    let gpu_temp = read_ec_register(GPU_TEMP_OFFSET);
-    cpu_temp.max(gpu_temp)
-}
+impl OmenGUI for OmenFanGui {
+    type Executor = iced::executor::default;
+    type Message = Message;
+    type Theme = iced::theme::Theme;
+    type Flags = ();
 
-fn set_fan_speed(fan1_speed: u8, fan2_speed: u8) {
-    write_ec_register(FAN1_OFFSET, fan1_speed);
-    write_ec_register(FAN2_OFFSET, fan2_speed);
-}
-
-fn disable_bios_control() {
-    write_ec_register(BIOS_CONTROL_OFFSET, 0x06); // Disable BIOS control
-}
-
-fn enable_bios_control() {
-    write_ec_register(BIOS_CONTROL_OFFSET, 0x00); // Enable BIOS control
-}
-
-fn apply_bios_mode(mode: u8) {
-    write_ec_register(PERFORMANCE_OFFSET, mode);
-}
-
-fn mode() -> String{
-    let perf_offset: u8 =  read_ec_register(PERFORMANCE_OFFSET);
-    match perf_offset {
-        0x30 => {
-            "Default Mode".to_string()
-        }
-        0x31 => {
-            "Performance Mode".to_string()
-        }
-        0x50 => {
-            "Cool Mode".to_string()
-        }
-        0x00 => {
-            "Legacy Default Mode".to_string()
-        }
-        _ => {
-            "Undefined Mode".to_string()
-        }
+    fn read_ec_register(offset: u64) -> u8 {
+        let mut file = File::open(EC_IO_FILE).expect("Failed to open EC IO file. Ensure you have the necessary permissions.");
+        file.seek(SeekFrom::Start(offset))
+            .expect("Failed to seek to EC register.");
+        let mut buffer = [0u8; 1];
+        file.read_exact(&mut buffer)
+            .expect("Failed to read EC register.");
+        buffer[0]
     }
-}
 
-fn get_current_mode() -> (String, u8){
-    let mode;
-    let value;
-    if USE_COOL_MODE {
-        mode = "Cool Mode".to_string();
-        value = BIOS_COOL_MODE;
+    fn write_ec_register(offset: u64, value: u8) {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .open(EC_IO_FILE)
+            .expect("Failed to open EC IO file. Ensure you have the necessary permissions.");
+        file.seek(SeekFrom::Start(offset))
+            .expect("Failed to seek to EC register.");
+        file.write_all(&[value])
+            .expect("Failed to write to EC register.");
     }
-    else if USE_PERFORMANCE_MODE {
-        mode = "Performance Mode".to_string();
-        value = BIOS_PERFORMANCE_MODE;
-    }
-    else {
-        mode = "Default Mode".to_string();
-        value = BIOS_DEFAULT_MODE;
-    }
-    (mode, value)
-}
 
-fn temp_to_performance(temp: u8) -> u8{
-    match temp {
-    86..=u8::MAX => {
-        write_ec_register(PERFORMANCE_OFFSET, 0x30);
-        93
+    fn get_max_temp() -> u8 {
+        let cpu_temp = read_ec_register(CPU_TEMP_OFFSET);
+        let gpu_temp = read_ec_register(GPU_TEMP_OFFSET);
+        cpu_temp.max(gpu_temp)
     }
-       0..=85 => {
-            write_ec_register(PERFORMANCE_OFFSET, 0x31);
-            80
+
+    fn set_fan_speed(fan1_speed: u8, fan2_speed: u8) {
+        write_ec_register(FAN1_OFFSET, fan1_speed);
+        write_ec_register(FAN2_OFFSET, fan2_speed);
+    }
+
+    fn disable_bios_control() {
+        write_ec_register(BIOS_CONTROL_OFFSET, 0x06); // Disable BIOS control
+    }
+
+    fn enable_bios_control() {
+        write_ec_register(BIOS_CONTROL_OFFSET, 0x00); // Enable BIOS control
+    }
+
+    fn apply_bios_mode(mode: u8) {
+        write_ec_register(PERFORMANCE_OFFSET, mode);
+    }
+
+    fn mode() -> String{
+        let perf_offset: u8 =  read_ec_register(PERFORMANCE_OFFSET);
+        match perf_offset {
+            0x30 => {
+                "Default Mode".to_string()
+            }
+            0x31 => {
+                "Performance Mode".to_string()
+            }
+            0x50 => {
+                "Cool Mode".to_string()
+            }
+            0x00 => {
+                "Legacy Default Mode".to_string()
+            }
+            _ => {
+                "Undefined Mode".to_string()
+            }
         }
     }
+
+    fn get_current_mode(chosenmode: String) -> (String, u8){
+        let mode;
+        let value;
+        match chosenmode {
+            String::from("Default Mode") => {
+                mode = "Default Mode".to_string();
+                value = BIOS_DEFAULT_MODE;
+            }
+            String::from("Cool Mode") => {
+                mode = "Cool Mode".to_string();
+                value = BIOS_COOL_MODE;
+            }
+            String::from("Perfomance Mode") => {
+                mode = "Performance Mode".to_string();
+                value = BIOS_PERFORMANCE_MODE;
+            }
+            String::from("Custom Mode") => {
+                mode = "Custom Mode".to_string();
+                value = USE_FAN_CURVE;
+            }
+        }
+        (mode, value)
+    }
+
+    fn temp_to_performance(temp: u8) -> u8{
+        match temp {
+        86..=u8::MAX => {
+            write_ec_register(PERFORMANCE_OFFSET, 0x30);
+            93
+        }
+        0..=85 => {
+                write_ec_register(PERFORMANCE_OFFSET, 0x31);
+                80
+            }
+        }
+    }
+
+    fn new(_flags: ()) -> (self, Command<Message>) {
+        (
+            OmenFanGui {
+                options: vec![
+                    "Default Mode".to_string(), 
+                    "Cool Mode".to_string(), 
+                    "Performance Mode".to_string(), 
+                    "Custom Mode".to_string()],
+                selected_option: None,
+                chosen_mode: None,
+            },
+            Command::perform(async {}, Message::Run),
+        )
+    }
+
+    fn title(&self) -> String {
+        String::from("Omen Fan Mode Selection")
+    }
+
+    fn update(&mut self, message: Message) -> Command<Message> {
+        match message {
+            Message::ChosenOption(option) => {
+                self.selected_option = Some(option.clone());
+                if self.selected_option.unwrap() != self.chosen_mode {
+                    if self.selected_option.unwrap() == String::from("Custom Mode") {
+                        USE_FAN_CURVE = true;
+                    }
+                    else {
+                        self.chosen_mode = self.selected_option.unwrap();
+                        USE_FAN_CURVE = false;
+                    }
+                }
+                Command::none()
+            }
+            Message::Run => {
+                let idle_speed = 0;
+                let poll_interval = Duration::from_secs(1);
+
+                let mut previous_speed = (0, 0);
+                let mut already_throttling = false;
+                let mut previous_mode = "Legacy Default Mode".to_string();
+
+                loop {
+                    
+                    let current_mode = mode();
+                    if current_mode != self.chosen_mode{
+                        println!("The mode is: {current_mode}");
+                    }
+
+                    if USE_FAN_CURVE {
+                        disable_bios_control();
+                        let temp = get_max_temp();
+                        println!("Current temperature: {}°C", temp);
+                        temp_to_performance(temp);
+                        let speed = match temp {
+                            0..=45 => idle_speed,
+                            46..=50 => 20,
+                            51..=55 => 37,
+                            56..=70 => 45,
+                            71..=75 => 50,
+                            76..=80 => 70,
+                            81..=85 => 80,
+                            86..93 => 90,
+                            _ => 100,
+                        };
+
+                        let fan1_speed = ((FAN1_MAX as u16 * speed as u16) / 100) as u8;
+                        let fan2_speed = ((FAN2_MAX as u16 * speed as u16) / 100) as u8;
+
+                        if previous_speed != (fan1_speed, fan2_speed) {
+                            set_fan_speed(fan1_speed, fan2_speed);
+                            previous_speed = (fan1_speed, fan2_speed);
+                        }
+                    }
+                    else {
+                        let (bios_mode, value) = get_current_mode();
+                        if self.chosen_mode != current_mode {
+                            apply_bios_mode(value);
+                            println!("Setting to : {bios_mode}");
+                        }
+                    }
+
+                    if get_max_temp() > 95 {
+                        if already_throttling == false {
+                            println!("CPU is thermal throttling ! taking over the fan");
+                        }
+                        disable_bios_control();
+                        set_fan_speed(46, 44);
+                        already_throttling = true;
+                    }
+                    else {
+                        enable_bios_control();
+                        already_throttling = false;
+                    }
+
+                    previous_mode = current_mode;
+
+                    sleep(poll_interval);
+                }
+
+            }
+        }
+
+    }
+
+    fn view(&self) -> Element<Message> {
+        let mode_list = pick_list(
+            &self.options, 
+            self.selected_option.clone(), 
+            Message::none()
+        )
+        .placeholder("Choose a fan mode");
+
+        let valid_button = button("Ok")
+            .on_press(Message::ChosenOption);
+
+        let content = column![
+            text("Choose a fan mode"),
+            mode_list,
+            valid_button,
+        ]
+        .align_x(Alignment::Center)
+        .spacing(20);
+
+        container(content)
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+    }
+
 }
 
 fn main() {
@@ -173,68 +330,6 @@ fn main() {
     // Perform setup tasks
     load_ec_sys_module();
 
-    let idle_speed = 0;
-    let poll_interval = Duration::from_secs(1);
+    OmenFanGui::run(Settings::default())
 
-    let mut previous_speed = (0, 0);
-    let mut already_throttling = false;
-    let mut previous_mode = "Legacy Default Mode".to_string();
-
-    loop {
-        
-        let current_mode = mode();
-        if previous_mode != current_mode{
-            println!("The mode is: {current_mode}");
-        }
-
-        if USE_FAN_CURVE {
-            disable_bios_control();
-            let temp = get_max_temp();
-            println!("Current temperature: {}°C", temp);
-            temp_to_performance(temp);
-            let speed = match temp {
-                0..=45 => idle_speed,
-                46..=50 => 20,
-                51..=55 => 37,
-                56..=70 => 45,
-                71..=75 => 50,
-                76..=80 => 70,
-                81..=85 => 80,
-                86..93 => 90,
-                _ => 100,
-            };
-
-            let fan1_speed = ((FAN1_MAX as u16 * speed as u16) / 100) as u8;
-            let fan2_speed = ((FAN2_MAX as u16 * speed as u16) / 100) as u8;
-
-            if previous_speed != (fan1_speed, fan2_speed) {
-                set_fan_speed(fan1_speed, fan2_speed);
-                previous_speed = (fan1_speed, fan2_speed);
-            }
-        }
-        else {
-            let (bios_mode, value) = get_current_mode();
-            if bios_mode != current_mode {
-                apply_bios_mode(value);
-                println!("Setting to : {bios_mode}");
-            }
-        }
-
-        if get_max_temp() > 95 {
-            if already_throttling == false {
-                println!("CPU is thermal throttling ! taking over the fan");
-            }
-            disable_bios_control();
-            set_fan_speed(46, 44);
-            already_throttling = true;
-        }
-        else {
-            enable_bios_control();
-            already_throttling = false;
-        }
-
-        previous_mode = current_mode;
-
-        sleep(poll_interval);
-    }
 }
