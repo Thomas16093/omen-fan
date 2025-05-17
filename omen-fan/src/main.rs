@@ -1,6 +1,5 @@
 use iced::{Alignment, Application, Element, Settings};
 use iced::widget::{column, container, pick_list, text, button};
-use std::array::try_from_fn;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::process::exit;
