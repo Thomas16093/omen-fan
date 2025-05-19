@@ -1,10 +1,10 @@
 # omen-fan
 - A simple utility to manually control the fans of a HP Omen laptop
 - Works on various HP Omen laptop and even some Victus laptops from testing. 
-- Also has a service that actively adjusts the fan speed according to tempertatures (cause the default BIOS control sucks)
+- Also has a service that actively adjusts the fan speed according to temperatures (cause the default BIOS control sucks)
 - Supports enabling boost mode via sysfs
 - Made and tested on an Omen 16-c0140AX
-- Rust made and tested on Omen 16-n0xxx series and Omen 15-dc10xxxx
+- Rust made and tested on Omen 16-n0xxx series, Omen 15-dc1xxxx and Omen 15-en1xxx
 
 # WARNING
 - Forcing this program to run on incompatible laptops may cause hardware damage. Use at your own risk.
@@ -32,7 +32,7 @@
         - cargo build --release --features "acpi_ec,cool_mode"
 
 # Silverblue
--copy the target from release folder
--sudo cp /var/home/user-name/omen-fan/omen-fan/target/release/omen-fan /usr/local/bin/
+- copy the target from release folder
+- sudo cp /var/home/user-name/omen-fan/omen-fan/target/release/omen-fan /usr/local/bin/
 replace user
---Then add service file to the system.
+- Then add service file to the system.
