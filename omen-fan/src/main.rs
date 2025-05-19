@@ -4,10 +4,36 @@ use std::process::exit;
 use std::thread::sleep;
 use std::time::Duration;
 use std::process::Command;
-use std::{fs, vec};
-use std::path::Path;
 
+// Let user compile based on access to ec_sys
+// user does not have access -> use the acpi_ec project
+#[cfg(feature = "acpi_ec")]
+const EC_IO_FILE: &str = "/dev/ec";
+
+// user have access to ec_sys
+#[cfg(not(feature = "acpi_ec"))]
 const EC_IO_FILE: &str = "/sys/kernel/debug/ec/ec0/io";
+
+// use a custom fan curve
+#[cfg(feature = "fan_custom")]
+const USE_FAN_CURVE: bool = true;
+
+#[cfg(not(feature = "fan_custom"))]
+const USE_FAN_CURVE: bool = false;
+
+// use a specific bios mode
+#[cfg(feature = "performance_mode")]
+const USE_PERFORMANCE_MODE: bool = true;
+
+#[cfg(not(feature = "performance_mode"))]
+const USE_PERFORMANCE_MODE: bool = false;
+
+#[cfg(feature = "cool_mode")]
+const USE_COOL_MODE: bool = true;
+
+#[cfg(not(feature = "cool_mode"))]
+const USE_COOL_MODE: bool = false;
+
 const PERFORMANCE_OFFSET: u64 = 0x95;
 const FAN1_OFFSET: u64 = 0x34; // Fan 1 Speed Set (units of 100RPM)
 const FAN2_OFFSET: u64 = 0x35; // Fan 2 Speed Set (units of 100RPM)
@@ -16,35 +42,29 @@ const GPU_TEMP_OFFSET: u64 = 0xB7; // GPU Temp (°C)
 const BIOS_CONTROL_OFFSET: u64 = 0x62; // BIOS Control
 const FAN1_MAX: u8 = 55; // Max speed for Fan 1
 const FAN2_MAX: u8 = 57; // Max speed for Fan 2
-const CONFIG_FILE: &str = "/etc/omen-fan/config.toml";
-
-fn generate_config_file() {
-    if !Path::new(CONFIG_FILE).exists() {
-        println!("Configuration file not found. Generating default config...");
-        let default_config = r#"
-[service]
-TEMP_CURVE = [46, 49, 52, 55, 58, 61, 64, 67, 70, 73, 76, 79, 82, 85, 93]
-SPEED_CURVE = [37, 40, 43, 46, 49, 52, 55, 58, 61, 64, 67, 70, 85, 90, 100]
-IDLE_SPEED = 0
-POLL_INTERVAL = 1
-"#;
-        fs::create_dir_all("/etc/omen-fan").expect("Failed to create config directory.");
-        fs::write(CONFIG_FILE, default_config).expect("Failed to write default config.");
-        println!("Default configuration file created at {}", CONFIG_FILE);
-    }
-}
+const BIOS_LEGACY_DEFAULT_MODE: u8 = 0; // Bios default mode on init
+const BIOS_DEFAULT_MODE: u8 = 48; // Bios default mode
+const BIOS_PERFORMANCE_MODE: u8 = 49; // Bios performance mode
+const BIOS_COOL_MODE: u8 = 80; // Bios cool mode
 
 fn load_ec_sys_module() {
-    // Check if the `ec_sys` module is loaded
-    let output = Command::new("lsmod")
-        .output()
-        .expect("Failed to execute `lsmod` command.");
-    if !String::from_utf8_lossy(&output.stdout).contains("ec_sys") {
-        // Load the `ec_sys` module with write support
-        Command::new("modprobe")
-            .args(&["ec_sys", "write_support=1"])
-            .status()
-            .expect("Failed to load `ec_sys` module.");
+    // check which ec module is used
+    if EC_IO_FILE == "/dev/ec" {
+        // do nothing, the module is always allowed in write
+        return
+    }
+    else {
+        // Check if the `ec_sys` module is loaded
+        let output = Command::new("lsmod")
+            .output()
+            .expect("Failed to execute `lsmod` command.");
+        if !String::from_utf8_lossy(&output.stdout).contains("ec_sys") {
+            // Load the `ec_sys` module with write support
+            Command::new("modprobe")
+                .args(&["ec_sys", "write_support=1"])
+                .status()
+                .expect("Failed to load `ec_sys` module.");
+        }
     }
 }
 
@@ -84,19 +104,51 @@ fn disable_bios_control() {
     write_ec_register(BIOS_CONTROL_OFFSET, 0x06); // Disable BIOS control
 }
 
+fn enable_bios_control() {
+    write_ec_register(BIOS_CONTROL_OFFSET, 0x00); // Enable BIOS control
+}
+
+fn apply_bios_mode(mode: u8) {
+    write_ec_register(PERFORMANCE_OFFSET, mode);
+}
+
 fn mode() -> String{
     let perf_offset: u8 =  read_ec_register(PERFORMANCE_OFFSET);
     match perf_offset {
         0x30 => {
-            "Normal Mode".to_string()
+            "Default Mode".to_string()
         }
         0x31 => {
             "Performance Mode".to_string()
+        }
+        0x50 => {
+            "Cool Mode".to_string()
+        }
+        0x00 => {
+            "Legacy Default Mode".to_string()
         }
         _ => {
             "Undefined Mode".to_string()
         }
     }
+}
+
+fn get_current_mode() -> (String, u8){
+    let mode;
+    let value;
+    if USE_COOL_MODE {
+        mode = "Cool Mode".to_string();
+        value = BIOS_COOL_MODE;
+    }
+    else if USE_PERFORMANCE_MODE {
+        mode = "Performance Mode".to_string();
+        value = BIOS_PERFORMANCE_MODE;
+    }
+    else {
+        mode = "Default Mode".to_string();
+        value = BIOS_DEFAULT_MODE;
+    }
+    (mode, value)
 }
 
 fn temp_to_performance(temp: u8) -> u8{
@@ -112,11 +164,6 @@ fn temp_to_performance(temp: u8) -> u8{
     }
 }
 
-
-// fn enable_bios_control() {
-//    write_ec_register(BIOS_CONTROL_OFFSET, 0x00); // Enable BIOS control
-// }
-
 fn main() {
     if !nix::unistd::Uid::effective().is_root() {
         eprintln!("Root access is required to run this program.");
@@ -125,40 +172,68 @@ fn main() {
 
     // Perform setup tasks
     load_ec_sys_module();
-    generate_config_file();
 
     let idle_speed = 0;
     let poll_interval = Duration::from_secs(1);
 
     let mut previous_speed = (0, 0);
+    let mut already_throttling = false;
+    let mut previous_mode = "Legacy Default Mode".to_string();
 
     loop {
-        disable_bios_control();
-        let temp = get_max_temp();
-        println!("Current temperature: {}°C", temp);
-        temp_to_performance(temp);
-        let mode = mode();
-        println!("The mode is: {mode}");
-
-        let speed = match temp {
-            0..=45 => idle_speed,
-            46..=50 => 20,
-            51..=55 => 37,
-            56..=70 => 45,
-            71..=75 => 50,
-            76..=80 => 70,
-            81..=85 => 80,
-            86..93 => 90,
-            _ => 100,
-        };
-
-        let fan1_speed = ((FAN1_MAX as u16 * speed as u16) / 100) as u8;
-        let fan2_speed = ((FAN2_MAX as u16 * speed as u16) / 100) as u8;
-
-        if previous_speed != (fan1_speed, fan2_speed) {
-            set_fan_speed(fan1_speed, fan2_speed);
-            previous_speed = (fan1_speed, fan2_speed);
+        
+        let current_mode = mode();
+        if previous_mode != current_mode{
+            println!("The mode is: {current_mode}");
         }
+
+        if USE_FAN_CURVE {
+            disable_bios_control();
+            let temp = get_max_temp();
+            println!("Current temperature: {}°C", temp);
+            temp_to_performance(temp);
+            let speed = match temp {
+                0..=45 => idle_speed,
+                46..=50 => 20,
+                51..=55 => 37,
+                56..=70 => 45,
+                71..=75 => 50,
+                76..=80 => 70,
+                81..=85 => 80,
+                86..93 => 90,
+                _ => 100,
+            };
+
+            let fan1_speed = ((FAN1_MAX as u16 * speed as u16) / 100) as u8;
+            let fan2_speed = ((FAN2_MAX as u16 * speed as u16) / 100) as u8;
+
+            if previous_speed != (fan1_speed, fan2_speed) {
+                set_fan_speed(fan1_speed, fan2_speed);
+                previous_speed = (fan1_speed, fan2_speed);
+            }
+        }
+        else {
+            let (bios_mode, value) = get_current_mode();
+            if bios_mode != current_mode {
+                apply_bios_mode(value);
+                println!("Setting to : {bios_mode}");
+            }
+        }
+
+        if get_max_temp() > 95 {
+            if already_throttling == false {
+                println!("CPU is thermal throttling ! taking over the fan");
+            }
+            disable_bios_control();
+            set_fan_speed(46, 44);
+            already_throttling = true;
+        }
+        else {
+            enable_bios_control();
+            already_throttling = false;
+        }
+
+        previous_mode = current_mode;
 
         sleep(poll_interval);
     }
