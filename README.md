@@ -1,7 +1,7 @@
 # omen-fan-gui
 - A simple utility to manually control the fans of a HP Omen laptop
 - Works on various HP Omen laptop and even some Victus laptops from testing. 
-- Let you choose between integrated ec fan mode or integrated fan mode.
+- Let you choose between integrated ec fan mode or custom fan mode.
 - Supports enabling boost mode via sysfs ( used when cpu reach +95°C ).
 - Made and tested on an Omen 16-c0140AX
 - Rust made and tested on Omen 16-n0xxx series, Omen 15-dc10xxxx and Omen 15-en1xxx
