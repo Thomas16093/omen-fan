@@ -40,7 +40,12 @@ In progress, everything said below is not yet push on the repo
         - cargo build --release --features "acpi_ec,cool_mode"
 
 # Silverblue
--copy the target from release folder
+~~-copy the target from release folder
 -sudo cp /var/home/user-name/omen-fan/omen-fan/target/release/omen-fan /usr/local/bin/
 replace user
---Then add service file to the system.
+--Then add service file to the system.~~
+
+Currently, the gui app is a standalone app that will loose control of the fans when the app is closed.
+Possible resolution : 
+- Looking into sending a value through [d-bus](https://dbus.freedesktop.org/doc/dbus-send.1.html)
+- TCP or equivalent
