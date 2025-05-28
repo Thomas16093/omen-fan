@@ -8,12 +8,14 @@
 
 # Development status
 In progress, everything said below is not yet push on the repo :
-- The gui can talk to the internal program asynchronously.
 - The program does not currently detect a fail on the async function.
-- ~~The gui is not sized correctly and take too much space.~~ Partially solved ( could be better )
 - The goal is to make a tray control too :
     - Need to wait on Iced 14.0
     - Or migrate to Tauri
+
+Already pushed to the repo :
+- The gui can talk to the internal program asynchronously.
+- ~~The gui is not sized correctly and take too much space.~~ Partially solved ( could be better )
 
 # WARNING
 - Forcing this program to run on incompatible laptops may cause hardware damage. Use at your own risk.
@@ -36,4 +38,4 @@ replace user
 Currently, the gui app is a standalone app that will loose control of the fans when the app is closed.
 Possible resolution : 
 - Looking into sending a value through [d-bus](https://dbus.freedesktop.org/doc/dbus-send.1.html)
-- TCP or equivalent
+- Sending through a TCP protocol or equivalent
