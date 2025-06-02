@@ -7,7 +7,9 @@
 - Rust made and tested on Omen 16-n0xxx series, Omen 15-dc10xxxx and Omen 15-en1xxx
 
 # Development status
-In progress, everything said below is not yet push on the repo :
+In progress, everything said below is not yet pushed on the repo :
+- Self elevation of privileges if the program isn't started as sudo
+- Instead of having no message in console only message if launched from a console
 - The program does not currently detect a fail on the async function.
 - The goal is to make a tray control too :
     - Need to wait on Iced 14.0
