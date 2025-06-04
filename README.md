@@ -8,7 +8,7 @@
 
 # Development status
 In progress, everything said below is not yet pushed on the repo :
-- Self elevation of privileges if the program isn't started as sudo
+- Self elevation of privileges if the program isn't started as sudo ( only work via the command line )
 - Instead of having no message in console only message if launched from a console
 - The program does not currently detect a fail on the async function.
 - The goal is to make a tray control too :
@@ -18,6 +18,11 @@ In progress, everything said below is not yet pushed on the repo :
 Already pushed to the repo :
 - The gui can talk to the internal program asynchronously.
 - ~~The gui is not sized correctly and take too much space.~~ Partially solved ( could be better )
+
+Postponed till full rewrite : 
+- Sudo elevation from the gui
+- Service installation for automatic execution
+- Service / Gui communication via d-bus or equivalent
 
 # WARNING
 - Forcing this program to run on incompatible laptops may cause hardware damage. Use at your own risk.
