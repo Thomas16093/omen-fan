@@ -167,7 +167,11 @@ static SENT_MODE: LazyLock<Mutex<u8>> = LazyLock::new(|| Mutex::new(0x30));
 
 #[tokio::main]
 async fn main() -> iced::Result {
-    if !nix::unistd::Uid::effective().is_root() {
+    
+    // try to launch the program as sudo if the user didn't do it
+    let escalation_result = sudo::escalate_if_needed();
+    if escalation_result.is_err() {
+        // if not escalated, explain why and exit
         eprintln!("Root access is required to run this program.");
         exit(1);
     }
