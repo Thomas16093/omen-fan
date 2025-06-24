@@ -7,6 +7,9 @@
 - Rust made and tested on Omen 16-n0xxx series, Omen 15-dc10xxxx and Omen 15-en1xxx
 
 # Development status
+⚠️ Stalled until August at least !
+The program do work as is + occupied by other tasks
+
 In progress, everything said below is not yet pushed on the repo :
 - Instead of having no message in console only message if launched from a console
 - The program does not currently detect a fail on the async function.
