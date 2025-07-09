@@ -241,7 +241,7 @@ impl OmenFanGui {
     }
 
     // Define what the gui app will look like
-    fn view(&self) -> Container<Message> {
+    fn view(&self) -> Container<'_, Message> {
         // adding a list to choose between modes
         let mode_list = pick_list(
             self.options.clone(),
