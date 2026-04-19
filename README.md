@@ -1,3 +1,8 @@
+> [!WARNING]  
+> Due to a system instability, I was forced to change my laptop.
+> 
+> The new one is not a Omen or Victus, so no more development for me
+
 # omen-fan
 - A simple utility to manually control the fans of a HP Omen laptop
 - Works on various HP Omen laptop and even some Victus laptops from testing. 
